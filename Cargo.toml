@@ -1,0 +1,91 @@
+﻿[package]
+name         = "plex-core"
+version      = "0.1.0"
+edition      = "2021"
+rust-version = "1.75"
+description  = "Plex — Cross-platform P2P encrypted messaging core"
+authors      = ["Alexander Shirokov <vlouriet@gmail.com>"]
+repository   = "https://github.com/vlouriet-lab/plex-core"
+keywords     = ["p2p", "encrypted", "messaging", "uniffi", "decentralized"]
+categories   = ["network-programming", "cryptography", "encoding"]
+publish      = false
+
+# Генерируем cdylib для UniFFI и staticlib для линковки в iOS
+[lib]
+name       = "plex_core"
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runtime dependencies
+# ─────────────────────────────────────────────────────────────────────────────
+[dependencies]
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+futures-util = "0.3"
+
+# UniFFI: генерация Kotlin / Swift обёрток
+uniffi = { version = "0.28", features = ["tokio", "cli"] }
+
+# P2P transport: MagicSock + NAT-traversal + DERP relay + mDNS discovery
+iroh      = { version = "0.35", features = ["discovery-local-network"] }
+iroh-base = "0.35"
+
+# Зашифрованное хранилище (SQLite + SQLCipher AES-256, OpenSSL вендорим)
+rusqlite = { version = "0.32", features = ["bundled-sqlcipher-vendored-openssl"] }
+
+# Zero-knowledge безопасность
+secrecy = "0.8"
+zeroize = { version = "1.7", features = ["derive"] }
+
+# Сериализация событий
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+rand = "0.8"
+
+# Логирование
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+# Обработка ошибок
+thiserror = "1"
+anyhow    = "1"
+
+# Bridge Protocol поддержка (обход цензуры)
+tokio-tungstenite = "0.21"
+rustls = "0.21"
+base64 = "0.22"
+hex = "0.4"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build-time: UniFFI scaffolding (генерация C-FFI слоя)
+# ─────────────────────────────────────────────────────────────────────────────
+[build-dependencies]
+uniffi = { version = "0.28", features = ["build"] }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Отдельный бинарь для генерации Kotlin/Swift байндингов:
+#   cargo run --bin uniffi-bindgen generate \
+#     --library ./target/debug/libplex_core.so \
+#     --language kotlin --out-dir ./bindings/kotlin
+# ─────────────────────────────────────────────────────────────────────────────
+[[bin]]
+name = "uniffi-bindgen"
+path = "src/bin/uniffi_bindgen.rs"
+
+[dev-dependencies]
+proptest = "1"
+
+# Optimized release profile for production use.
+# Provides significant size reduction and LTO for performance.
+[profile.release]
+opt-level     = "z"    # оптимизация по размеру (альтернатива: "3" — по скорости)
+lto           = true   # link-time optimization: убирает мёртвый код между крейтами
+codegen-units = 1      # один блок кодогенерации → лучше для LTO
+strip         = true   # убрать отладочные символы из .so
+panic         = "abort" # нет стека разматывания → меньше runttime-кода

@@ -1,0 +1,37 @@
+﻿# Rust
+/target
+/target-analysis
+/target-audit
+/target-audit-final
+/target-phaseD
+/target-phaseD-run
+/target-test
+
+# Database & Local storage
+/*.db
+/*.db-shm
+/*.db-wal
+/plex.db*
+
+# Logs & Scripts
+/*.log
+/*.txt
+/build_abis.log
+/build_android_run.log
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+
+# Temporary files
+
+# proptest regression files (auto-generated during tests)
+proptest-regressions/
+/tmp/
+
+# Сторонние инструменты сборки (не часть исходников)
+/_perl_lib/
