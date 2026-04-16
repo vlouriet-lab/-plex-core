@@ -334,6 +334,13 @@ mod tests {
     }
 
     #[test]
+    fn malformed_projection_payload_is_none() {
+        let mut payload = PROJECTION_PREFIX.to_vec();
+        payload.extend_from_slice(b"{not-valid-json");
+        assert!(parse_projection_event(&payload).is_none());
+    }
+
+    #[test]
     fn verification_anchor_roundtrip() {
         let ev = ProjectionEvent::VerificationAnchor {
             peer_id: "peer-2".into(),
@@ -379,6 +386,26 @@ mod tests {
         assert_eq!(report.events_processed, 2);
         assert_eq!(report.skipped_unrecognized, 2);
         assert_eq!(report.identity_registrations_rebuilt, 0);
+    }
+
+    #[test]
+    fn rebuild_skips_malformed_projection_payload() {
+        let db = open_test_db();
+        let sk = test_secret();
+
+        let mut malformed = PROJECTION_PREFIX.to_vec();
+        malformed.extend_from_slice(b"{broken-json");
+        db.append_local_event(&sk, &malformed).unwrap();
+
+        let (record, _) = make_identity_registration("peer-ok");
+        let ev = identity_registration_event(&record);
+        db.append_projection_event(&sk, &ev).unwrap();
+
+        let report = db.rebuild_projections_from_event_log().unwrap();
+        assert_eq!(report.events_processed, 2);
+        assert_eq!(report.skipped_unrecognized, 1);
+        assert_eq!(report.identity_registrations_rebuilt, 1);
+        assert!(db.load_identity_registration("peer-ok").unwrap().is_some());
     }
 
     #[test]
